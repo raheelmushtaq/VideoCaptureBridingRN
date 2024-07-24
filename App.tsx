@@ -26,8 +26,8 @@ function App(): React.JSX.Element {
     backgroundColor: 'white',
   };
 
-  const onCaptureButtonPressed=()=>{
-    VidepCaptureModule.captureVideo()
+  const onCaptureButtonPressed=async()=>{
+    await VidepCaptureModule.captureVideo()
 
   }
   return (

@@ -13,6 +13,7 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import androidx.core.app.ActivityCompat
 
@@ -52,6 +53,7 @@ class VideoCaptureModule(reactContext: ReactApplicationContext) :
     private fun checkIfCameraPermissionGranted(): Boolean{
         return currentActivity?.let{ mActivity->
             ContextCompat.checkSelfPermission(mActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.Q &&
                     ContextCompat.checkSelfPermission(mActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
         }?:false
 
