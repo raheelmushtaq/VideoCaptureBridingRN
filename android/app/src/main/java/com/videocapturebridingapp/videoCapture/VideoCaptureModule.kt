@@ -16,10 +16,11 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.core.app.ActivityCompat
 
-class VideoCapturingModule(reactContext: ReactApplicationContext) :
+class VideoCaptureModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext), ActivityEventListener {
 
     private val VIDEO_CAPTURE_REQUEST_CODE = 1
+    private val VIDEO_CAPTURE_REQUEST_PERMISSION = 2
     private var promise: Promise? = null
 
     init {
@@ -34,20 +35,26 @@ class VideoCapturingModule(reactContext: ReactApplicationContext) :
     fun captureVideo(promise: Promise) {
         this.promise = promise
 
-        val currentActivity = currentActivity
+        val mActivity = currentActivity
 
-        if (currentActivity == null) {
+        if (mActivity == null) {
             promise.reject("Activity doesn't exist")
             return
         }
 
-        if (ContextCompat.checkSelfPermission(currentActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
-            ContextCompat.checkSelfPermission(currentActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(currentActivity, arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE), VIDEO_CAPTURE_REQUEST_CODE)
+        if (checkIfCameraPermissionGranted()) {
+            ActivityCompat.requestPermissions(mActivity, arrayOf(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE), VIDEO_CAPTURE_REQUEST_PERMISSION)
             return
         }
 
         startVideoCapture()
+    }
+    private fun checkIfCameraPermissionGranted(): Boolean{
+        return currentActivity?.let{ mActivity->
+            ContextCompat.checkSelfPermission(mActivity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(mActivity, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED
+        }?:false
+
     }
 
     private fun startVideoCapture() {
@@ -59,15 +66,24 @@ class VideoCapturingModule(reactContext: ReactApplicationContext) :
     }
 
     override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == VIDEO_CAPTURE_REQUEST_CODE) {
-            if (resultCode == Activity.RESULT_OK) {
-                val videoUri: Uri? = data?.data
-                videoUri?.let {
-                    saveVideoToGallery(it)
-                    promise?.resolve(it.toString())
-                } ?: promise?.reject("Video capture failed")
-            } else {
-                promise?.reject("Video capture failed")
+        when(requestCode) {
+           VIDEO_CAPTURE_REQUEST_CODE-> {
+                if (resultCode == Activity.RESULT_OK) {
+                    val videoUri: Uri? = data?.data
+                    videoUri?.let {
+                        saveVideoToGallery(it)
+                        promise?.resolve(it.toString())
+                    } ?: promise?.reject("Video capture failed")
+                } else {
+                    promise?.reject("Video capture failed")
+                }
+            } 
+            VIDEO_CAPTURE_REQUEST_PERMISSION->{
+                if(checkIfCameraPermissionGranted()) {
+                    startVideoCapture()
+                }else {
+                    promise?.reject("Permission Not granted For Camera")
+                }
             }
         }
     }
@@ -92,6 +108,5 @@ class VideoCapturingModule(reactContext: ReactApplicationContext) :
     }
 
     override fun onNewIntent(intent: Intent?) {
-        // Not needed for this example
     }
 }
